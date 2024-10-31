@@ -1,24 +1,19 @@
 
 import numpy as np # linear algebra
-import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
 import os
 import shutil
-import matplotlib.pyplot as plt
 import numpy as np
 from pydub import AudioSegment
 import librosa.display
 import librosa
 import soundfile as sf
 from keras.callbacks import EarlyStopping
-from IPython.display import display, Audio
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import StandardScaler
 import seaborn as sns
-from sklearn.metrics import confusion_matrix
 from keras.models import load_model
-from sklearn.metrics import accuracy_score, f1_score
 
 class Mach:
     def __init__(self) -> None:
@@ -44,43 +39,7 @@ class Mach:
             output_file = output_folder + f"/segment_{i}.wav"
             segment.export(output_file, format="wav")
 
-    def play_audio(self,audio_path):
-    # Function to play audio file
-        display(Audio(filename=audio_path))
-        
-    def generate_random_bytes(self):
-        return os.urandom(16)
-
-    def plot_audio_features(self,audio_path):
-        # Load audio file
-        y, sr = librosa.load(audio_path, sr=None)
-
-        # Extract speaker name from the file path
-        speaker_name = os.path.basename(audio_path).split('_')[0]
-
-        # Plot the waveform
-        plt.figure(figsize=(15, 10))
-        plt.subplot(3, 1, 1)
-        librosa.display.waveshow(y, sr=sr,color="blue")
-        plt.title(f'Waveform - {speaker_name}')
-
-        # Plot the spectrogram
-        plt.subplot(3, 1, 2)
-        D = librosa.amplitude_to_db(librosa.stft(y), ref=np.max)
-        librosa.display.specshow(D, sr=sr, x_axis='time', y_axis='log')
-        plt.colorbar(format='%+2.0f dB')
-        plt.title(f'Spectrogram - {speaker_name}')
-
-        # Plot the MFCCs
-        plt.subplot(3, 1, 3)
-        mfccs = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
-        librosa.display.specshow(mfccs, x_axis='time')
-        plt.colorbar()
-        plt.title(f'MFCCs - {speaker_name}')
-
-        plt.tight_layout()
-        plt.show()
-
+    
     def extract_features(self,parent_dir, speaker_folders):
         features = []
         labels = []
@@ -106,7 +65,7 @@ class Mach:
     def give_key_from_audio(self,filepath):
         self.input = filepath
         # Output directory to clear
-        output_dir = ["E:/Padhai/SEM/ML/Audio Keys/combined_files","E:/Padhai/SEM/ML/Audio Keys/16000_pcm_speeches/Anjaneya","E:/Padhai/SEM/ML/Audio Keys/16000_pcm_speeches/Armaan","E:/Padhai/SEM/ML/Audio Keys/16000_pcm_speeches/Tanmay"]
+        output_dir = ["E:/Padhai/SEM/ML/Audio Keys/16000_pcm_speeches/processing/Anjaneya_Raw","E:/Padhai/SEM/ML/Audio Keys/16000_pcm_speeches/processing/Tanmay_Raw","E:/Padhai/SEM/ML/Audio Keys/16000_pcm_speeches/processing/Armaan_Raw"]
         for single_path in output_dir:
             # Clear the contents of the output directory
             shutil.rmtree(single_path, ignore_errors=True)
@@ -114,101 +73,34 @@ class Mach:
             print(f"Contents of {single_path} cleared.")
 
         
-        input_file = "E:/Padhai/SEM/ML/Audio Keys/16000_pcm_speeches/Tanmay_Raw/Tanmay.wav"
-        output_folder = "E:/Padhai/SEM/ML/Audio Keys/16000_pcm_speeches/Tanmay"
+        input_file = "E:/Padhai/SEM/ML/Audio Keys/16000_pcm_speeches/Raw/Tanmay_Raw/Tanmay_Raw.wav"
+        output_folder = "E:/Padhai/SEM/ML/Audio Keys/16000_pcm_speeches/processing/Tanmay_Raw"
         self.split_audio(input_file, output_folder)
 
-        input_file = "E:/Padhai/SEM/ML/Audio Keys/16000_pcm_speeches/Armaan_Raw/Armaan.wav"
-        output_folder = "E:/Padhai/SEM/ML/Audio Keys/16000_pcm_speeches/Armaan"
+        input_file = "E:/Padhai/SEM/ML/Audio Keys/16000_pcm_speeches/Raw/Armaan_Raw/Armaan_Raw.wav"
+        output_folder = "E:/Padhai/SEM/ML/Audio Keys/16000_pcm_speeches/processing/Armaan_Raw"
         self.split_audio(input_file, output_folder)
 
-        input_file = "E:/Padhai/SEM/ML/Audio Keys/16000_pcm_speeches/Anjaneya_Raw/Anjaneya.wav"
-        output_folder = "E:/Padhai/SEM/ML/Audio Keys/16000_pcm_speeches/Anjaneya"
-
+        input_file = "E:/Padhai/SEM/ML/Audio Keys/16000_pcm_speeches/Raw/Anjaneya_Raw/Anjaneya_Raw.wav"
+        output_folder = "E:/Padhai/SEM/ML/Audio Keys/16000_pcm_speeches/processing/Anjaneya_Raw"
         self.split_audio(input_file, output_folder)
-
-
-
-
-
-
 
         # Path to the dataset
-        dataset_path = "E:/Padhai/SEM/ML/Audio Keys/16000_pcm_speeches"
-
+        
         # Output directory to save the combined files
         output_dir = "E:/Padhai/SEM/ML/Audio Keys/combined_files"
 
         # Create the output directory if it doesn't exist
         os.makedirs(output_dir, exist_ok=True)
 
-        # List of speaker folders
-        speaker_folders = [
-            "Tanmay",
-            "Armaan",
-            "Anjaneya"
-        ]
-
-        # Number of files to combine for each speaker
-        num_files_to_combine = 240
-
-        # Iterate over each speaker's folder
-        for speaker_folder in speaker_folders:
-            speaker_folder_path = os.path.join(dataset_path, speaker_folder)
-
-            # List the first num_files_to_combine WAV files in the speaker's folder
-            wav_files = [f"segment_{i}.wav" for i in range(num_files_to_combine)]
-
-            # Combine all WAV files into a single long file
-            combined_audio = []
-            for wav_file in wav_files:
-                wav_file_path = os.path.join(speaker_folder_path, wav_file)
-                audio, sr = librosa.load(wav_file_path, sr=None)
-                combined_audio.extend(audio)
-
-            # Save the combined audio file
-            output_file_path = os.path.join(output_dir, f"{speaker_folder}_combined.wav")
-            sf.write(output_file_path, combined_audio, sr)
-
-        #print("Combination complete. Combined files saved in:", output_dir)
-
-    
-
-
-        # Play a specific combined audio file
-        speaker_folder = "Tanmay_combined"
-        speaker_folder = "Armaan_combined"
-        audio_path = os.path.join(output_dir, f"{speaker_folder}.wav")
-        #print(f"Click the play button to listen: {audio_path}")
-        #play_audio(audio_path)
-
-
-
-        # Function to plot the waveform, spectrogram, and MFCCs
-
-
-        # Paths to the combined audio files
-        audio_paths = [
-            'E:/Padhai/SEM/ML/Audio Keys/combined_files/Tanmay_combined.wav',
-        ]
-
-        # Plot features for each audio file
-        #for audio_path in audio_paths:
-            #plot_audio_features(audio_path)
-
-
-
-        # Set the parent directory for speaker folders
-        parent_dir = "E:/Padhai/SEM/ML/Audio Keys/16000_pcm_speeches"
+        parent_dir = "E:/Padhai/SEM/ML/Audio Keys/16000_pcm_speeches/processing"
 
         # List of speaker folders
         speaker_folders = [
-            "Tanmay",
-            "Armaan",
-            "Anjaneya"
+            "Tanmay_Raw",
+            "Armaan_Raw",
+            "Anjaneya_Raw"
         ]
-
-
 
         # Extract features and labels
         X, y = self.extract_features(parent_dir, speaker_folders)
@@ -312,11 +204,11 @@ class Mach:
 
     def get_speaker_index(self):
         
-        if self.input.endswith("Tanmay.wav"):
+        if self.input.endswith("Tanmay_Raw.wav"):
             return 0
-        elif self.input.endswith("Armaan.wav"):
+        elif self.input.endswith("Armaan_Raw.wav"):
             return 1
-        elif self.input.endswith("Anjaneya.wav"):
+        elif self.input.endswith("Anjaneya_Raw.wav"):
             return 2
         else:
             print("F")
