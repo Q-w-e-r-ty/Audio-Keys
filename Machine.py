@@ -62,58 +62,36 @@ class Mach:
         return np.array(features), np.array(labels)
 
 
-    def give_key_from_audio(self,filepath):
+    def give_key_from_audio(self, filepath):
+
         self.input = filepath
-        # Output directory to clear
-        output_dir = ["E:/Padhai/SEM/ML/Audio Keys/16000_pcm_speeches/processing/Anjaneya_Raw","E:/Padhai/SEM/ML/Audio Keys/16000_pcm_speeches/processing/Tanmay_Raw","E:/Padhai/SEM/ML/Audio Keys/16000_pcm_speeches/processing/Armaan_Raw"]
-        for single_path in output_dir:
-            # Clear the contents of the output directory
-            shutil.rmtree(single_path, ignore_errors=True)
-            os.makedirs(single_path, exist_ok=True)
-            print(f"Contents of {single_path} cleared.")
-
+        filepath="E:/Padhai/SEM/ML/Audio Keys/16000_pcm_speeches"
+        # Define the path for the Raw and processing folders
+        raw_dir = os.path.join(filepath, "Raw")
+        output_dir_base = os.path.join(filepath, "processing")
         
-        input_file = "E:/Padhai/SEM/ML/Audio Keys/16000_pcm_speeches/Raw/Tanmay_Raw/Tanmay_Raw.wav"
-        output_folder = "E:/Padhai/SEM/ML/Audio Keys/16000_pcm_speeches/processing/Tanmay_Raw"
-        self.split_audio(input_file, output_folder)
-
-        input_file = "E:/Padhai/SEM/ML/Audio Keys/16000_pcm_speeches/Raw/Armaan_Raw/Armaan_Raw.wav"
-        output_folder = "E:/Padhai/SEM/ML/Audio Keys/16000_pcm_speeches/processing/Armaan_Raw"
-        self.split_audio(input_file, output_folder)
-
-        input_file = "E:/Padhai/SEM/ML/Audio Keys/16000_pcm_speeches/Raw/Anjaneya_Raw/Anjaneya_Raw.wav"
-        output_folder = "E:/Padhai/SEM/ML/Audio Keys/16000_pcm_speeches/processing/Anjaneya_Raw"
-        self.split_audio(input_file, output_folder)
-
-        # Path to the dataset
+        # Get the list of speaker folders dynamically from the Raw directory
+        speaker_folders = [folder for folder in os.listdir(raw_dir) if os.path.isdir(os.path.join(raw_dir, folder))]
         
+        # Create the output directories for each speaker and clear any previous contents
+        for speaker in speaker_folders:
+            output_dir = os.path.join(output_dir_base, speaker)
+            shutil.rmtree(output_dir, ignore_errors=True)  # Clear existing contents
+            os.makedirs(output_dir, exist_ok=True)  # Create the new output directory
+            print(f"Contents of {output_dir} cleared and directory created.")
+        
+        # Process each speaker's audio file
+        for speaker in speaker_folders:
+            input_file = os.path.join(raw_dir, speaker, f"{speaker}.wav")
+            output_folder = os.path.join(output_dir_base, speaker)
+            self.split_audio(input_file, output_folder)
+
         # Output directory to save the combined files
-        output_dir = "E:/Padhai/SEM/ML/Audio Keys/combined_files"
-
-        # Create the output directory if it doesn't exist
-        os.makedirs(output_dir, exist_ok=True)
-
-        parent_dir = "E:/Padhai/SEM/ML/Audio Keys/16000_pcm_speeches/processing"
-
-        # List of speaker folders
-        speaker_folders = [
-            "Tanmay_Raw",
-            "Armaan_Raw",
-            "Anjaneya_Raw"
-        ]
+        combined_output_dir = os.path.join(filepath, "combined_files")
+        os.makedirs(combined_output_dir, exist_ok=True)
 
         # Extract features and labels
-        X, y = self.extract_features(parent_dir, speaker_folders)
-
-
-        #X.shape
-
-
-        # Print the first few features
-        #for feature in X[:1]:
-            #print(feature)
-
-
+        X, y = self.extract_features(output_dir_base, speaker_folders)
 
         # Encode labels with explicit classes
         self.label_encoder = LabelEncoder()
@@ -124,46 +102,35 @@ class Mach:
         X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.3, random_state=42)
         X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
 
-        # Print the shapes of training and validation data
-        #print("Training Data Shape:", X_train.shape)
-        #print("Validation Data Shape:", X_val.shape)
-
-
-
         # Define the RNN model
         self.model = tf.keras.Sequential([
-            #tf.keras.layers.LSTM(128, input_shape=(X_train.shape[1], X_train.shape[2])),
-            tf.keras.layers.LSTM(128),
+            tf.keras.layers.LSTM(128, input_shape=(X_train.shape[1], X_train.shape[2])),
             tf.keras.layers.Dense(64, activation='relu'),
             tf.keras.layers.Dense(len(speaker_folders), activation='softmax')
         ])
 
-
         # Compile the model
         self.model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-
 
         # Define the EarlyStopping callback
         early_stopping = EarlyStopping(monitor='val_loss', patience=4, restore_best_weights=True)
         
-
         # Train the model with EarlyStopping
-        history = self.model.fit(X_train, y_train, validation_data=(X_val, y_val), epochs=20, batch_size=32, callbacks=[early_stopping])
-        
+        history = self.model.fit(X_train, y_train, validation_data=(X_val, y_val), epochs=20, batch_size=32, callbacks=[early_stopping])        
 
-        # Check if EarlyStopping triggered
-        #if early_stopping.stopped_epoch > 0:
-        #    print("Early stopping triggered at epoch", early_stopping.stopped_epoch + 1)
-        #else:
-        #    print("Training completed without early stopping")
-        # Plot training vs validation loss
-        #plt.plot(history.history['loss'], label='Training Loss')
-        #plt.plot(history.history['val_loss'], label='Validation Loss')
-        #plt.xlabel('Epochs')
-        #plt.ylabel('Loss')
-        #plt.legend()
-        #plt.show()
-        
+            # Check if EarlyStopping triggered
+            #if early_stopping.stopped_epoch > 0:
+            #    print("Early stopping triggered at epoch", early_stopping.stopped_epoch + 1)
+            #else:
+            #    print("Training completed without early stopping")
+            # Plot training vs validation loss
+            #plt.plot(history.history['loss'], label='Training Loss')
+            #plt.plot(history.history['val_loss'], label='Validation Loss')
+            #plt.xlabel('Epochs')
+            #plt.ylabel('Loss')
+            #plt.legend()
+            #plt.show()
+            
 
 
 
